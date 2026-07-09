@@ -1,0 +1,229 @@
+repeat wait() until game:IsLoaded()
+local Rayfield = loadstring(game:HttpGet('https://raw.githubusercontent.com/shlexware/Rayfield/main/source'))()
+local Window = Rayfield:CreateWindow({Name="Tech Hub | 1 SEA FIX", ConfigurationSaving={Enabled=false}, KeySystem=false})
+
+getgenv().AutoFarm=false
+getgenv().Aura=false
+getgenv().AuraDist=30
+getgenv().NoClip=false
+getgenv().AutoSaber=false
+getgenv().AutoChest=false
+getgenv().AutoStore=false
+getgenv().AutoFruit=false
+getgenv().AutoRoll=false
+
+local TabFarm = Window:CreateTab("Auto Level", 4483362458)
+local TabAura = Window:CreateTab("Aura", 4483362490)
+local TabSaber = Window:CreateTab("Saber FIX", 4483362478)
+local TabChest = Window:CreateTab("Auto Chest", 4483362482)
+local TabFruit = Window:CreateTab("Fruits", 4483362483)
+
+local Quests = {
+    {L=1,N="Bandit",Q="BanditQuest1",QN=1,PQ=CFrame.new(1060,16,1547),PM=CFrame.new(1145,16,1630)},
+    {L=30,N="Pirate",Q="BuggyQuest1",QN=1,PQ=CFrame.new(-1140,4,3827),PM=CFrame.new(-1216,4,3911)},
+    {L=60,N="Desert Bandit",Q="DesertQuest",QN=1,PQ=CFrame.new(897,6,4390),PM=CFrame.new(932,7,4484)},
+    {L=330,N="Military Spy",Q="MagmaQuest",QN=2,PQ=CFrame.new(-5316,12,8516),PM=CFrame.new(-5787,75,8916)}
+}
+
+local CurrentTween=nil
+
+game:GetService("RunService").Stepped:Connect(function()
+    if getgenv().NoClip then
+        for _,p in pairs(game.Players.LocalPlayer.Character:GetDescendants()) do
+            if p:IsA("BasePart") then p.CanCollide=false end
+        end
+    end
+end)
+
+function HasQuest(M)
+    local g=game.Players.LocalPlayer.PlayerGui.Main.Quest
+    if not g.Visible then return false end
+    return string.find(g.Container.QuestTitle.Title.Text:lower(),M:lower())~=nil
+end
+
+function TweenReto(Target,Speed)
+    Speed=Speed or 320
+    local char=game.Players.LocalPlayer.Character
+    if not char then return end
+    local hrp=char:FindFirstChild("HumanoidRootPart")
+    if not hrp then return end
+    if not getgenv().AutoFarm and not getgenv().AutoSaber and not getgenv().AutoChest and not getgenv().AutoFruit then return end
+    local d=(hrp.Position-Target.Position).Magnitude
+    if d<120 then hrp.CFrame=Target return end
+    CurrentTween=game:GetService("TweenService"):Create(hrp,TweenInfo.new(d/Speed,Enum.EasingStyle.Linear),{CFrame=Target})
+    CurrentTween:Play()
+    repeat task.wait() until not getgenv().AutoFarm and not getgenv().AutoSaber and not getgenv().AutoChest and not getgenv().AutoFruit or CurrentTween.PlaybackState==Enum.PlaybackState.Completed
+    if CurrentTween then CurrentTween:Cancel() CurrentTween=nil end
+end
+
+function GetQuest()
+    local lvl=game.Players.LocalPlayer.Data.Level.Value
+    local sel=Quests[1]
+    for _,v in ipairs(Quests) do if lvl>=v.L then sel=v end end
+    return sel
+end
+
+function AuraLoop()
+    if getgenv().AuraRunning then return end
+    getgenv().AuraRunning=true
+    spawn(function()
+        local Net=game:GetService("ReplicatedStorage").Modules.Net
+        while getgenv().Aura or getgenv().AutoFarm do
+            task.wait(0.03)
+            pcall(function()
+                local hrp=game.Players.LocalPlayer.Character.HumanoidRootPart
+                if not hrp then return end
+                Net["RE/RegisterAttack"]:FireServer(0)
+                for _,mob in pairs(workspace.Enemies:GetChildren()) do
+                    if mob:FindFirstChild("HumanoidRootPart") and mob.Humanoid.Health>0 and (mob.HumanoidRootPart.Position-hrp.Position).Magnitude<=getgenv().AuraDist then
+                        mob.HumanoidRootPart.Size=Vector3.new(60,60,60)
+                        mob.HumanoidRootPart.CanCollide=false
+                        Net["RE/RegisterHit"]:FireServer(mob.HumanoidRootPart,{{mob.HumanoidRootPart,mob.Humanoid}})
+                    end
+                end
+            end)
+        end
+        getgenv().AuraRunning=false
+    end)
+end
+
+function StartFarm()
+    spawn(function()
+        while getgenv().AutoFarm do
+            task.wait(0.15)
+            pcall(function()
+                if not getgenv().AutoFarm then return end
+                local Q=GetQuest()
+                local hrp=game.Players.LocalPlayer.Character.HumanoidRootPart
+                if not HasQuest(Q.N) then
+                    TweenReto(Q.PQ)
+                    if not getgenv().AutoFarm then return end
+                    wait(0.5)
+                    game.ReplicatedStorage.Remotes.CommF_:InvokeServer("StartQuest",Q.Q,Q.QN)
+                    wait(1)
+                    return
+                end
+                local Mob=nil
+                for _,v in pairs(workspace.Enemies:GetChildren()) do if v.Name==Q.N and v.Humanoid.Health>0 then Mob=v break end end
+                if Mob then
+                    local BringPos=Mob.HumanoidRootPart.CFrame
+                    local PosFicar=BringPos*CFrame.new(0,15,6)
+                    TweenReto(PosFicar)
+                    repeat task.wait()
+                        if not getgenv().AutoFarm then break end
+                        if not game.Players.LocalPlayer.Character:FindFirstChildOfClass("Tool") then
+                            for _,t in pairs(game.Players.LocalPlayer.Backpack:GetChildren()) do if t.ToolTip=="Melee" then game.Players.LocalPlayer.Character.Humanoid:EquipTool(t) break end end
+                        end
+                        for _,m in pairs(workspace.Enemies:GetChildren()) do
+                            if m.Name==Q.N and m:FindFirstChild("HumanoidRootPart") and m.Humanoid.Health>0 and (m.HumanoidRootPart.Position-BringPos.Position).Magnitude<350 then
+                                m.HumanoidRootPart.CFrame=BringPos
+                                m.Humanoid.WalkSpeed=0
+                            end
+                        end
+                        hrp.CFrame=PosFicar
+                        hrp.Velocity=Vector3.new(0,0,0)
+                    until not getgenv().AutoFarm or not Mob.Parent or Mob.Humanoid.Health<=0 or not HasQuest(Q.N)
+                else
+                    TweenReto(Q.PM*CFrame.new(math.random(-25,25),0,math.random(-25,25))*CFrame.new(0,15,0))
+                    wait(0.5)
+                end
+            end)
+        end
+    end)
+end
+
+function AutoSaberFix()
+    spawn(function()
+        while getgenv().AutoSaber do
+            task.wait(0.5)
+            pcall(function()
+                if game.Players.LocalPlayer.Data.Level.Value<200 then Rayfield:Notify({Title="Saber",Content="Level 200+",Duration=3}) getgenv().AutoSaber=false return end
+                local Buttons={CFrame.new(-1488,11,114),CFrame.new(-1354,11,-351),CFrame.new(-1388,13,355),CFrame.new(-1617,13,152),CFrame.new(-1414,13,-118)}
+                for _,cf in ipairs(Buttons) do
+                    if not getgenv().AutoSaber then break end
+                    TweenReto(cf,280) wait(0.8)
+                    for _,v in pairs(workspace:GetDescendants()) do
+                        if v:IsA("ClickDetector") and v.Parent:IsA("BasePart") and (v.Parent.Position-cf.Position).Magnitude<12 then fireclickdetector(v) end
+                        if v:IsA("ProximityPrompt") and v.Parent:IsA("BasePart") and (v.Parent.Position-cf.Position).Magnitude<12 then fireproximityprompt(v) end
+                    end
+                end
+                if not getgenv().AutoSaber then return end
+                TweenReto(CFrame.new(-1610,12,156)) wait(1)
+                for _,v in pairs(workspace:GetDescendants()) do if v:IsA("ProximityPrompt") and v.ObjectText:lower():find("torch") then fireproximityprompt(v) end end
+                wait(1)
+                TweenReto(CFrame.new(1396,37,3342)) wait(1) game.ReplicatedStorage.Remotes.CommF_:InvokeServer("ProQuestProgress","GetCup")
+                TweenReto(CFrame.new(-379,29,355)) wait(1) game.ReplicatedStorage.Remotes.CommF_:InvokeServer("ProQuestProgress","FillCup")
+                TweenReto(CFrame.new(-1510,6,23)) wait(1) game.ReplicatedStorage.Remotes.CommF_:InvokeServer("ProQuestProgress","SickMan")
+                TweenReto(CFrame.new(-1400,29,5)) wait(1) game.ReplicatedStorage.Remotes.CommF_:InvokeServer("ProQuestProgress","RichMan")
+                TweenReto(CFrame.new(1396,37,3342)) wait(1) game.ReplicatedStorage.Remotes.CommF_:InvokeServer("ProQuestProgress","Relic") wait(2)
+                for _,v in pairs(workspace.Enemies:GetChildren()) do if v.Name=="Saber Expert" then repeat task.wait() if not getgenv().AutoSaber then break end TweenReto(v.HumanoidRootPart.CFrame*CFrame.new(0,15,0)) until v.Humanoid.Health<=0 end end
+                Rayfield:Notify({Title="Saber",Content="Completo!",Duration=5}) getgenv().AutoSaber=false
+            end)
+        end
+    end)
+end
+
+function AutoChestFunc()
+    spawn(function()
+        while getgenv().AutoChest do
+            task.wait(0.3)
+            pcall(function()
+                local chests={}
+                for _,v in pairs(workspace:GetDescendants()) do if v.Name:lower():find("chest") and v:IsA("BasePart") then table.insert(chests,v) end end
+                if #chests==0 then wait(1) return end
+                table.sort(chests,function(a,b) return (a.Position-game.Players.LocalPlayer.Character.HumanoidRootPart.Position).Magnitude < (b.Position-game.Players.LocalPlayer.Character.HumanoidRootPart.Position).Magnitude end)
+                for _,part in ipairs(chests) do
+                    if not getgenv().AutoChest then break end
+                    local dist=(part.Position-game.Players.LocalPlayer.Character.HumanoidRootPart.Position).Magnitude
+                    if dist>150 then TweenReto(part.CFrame,350) else game.Players.LocalPlayer.Character.HumanoidRootPart.CFrame=part.CFrame wait(0.2) firetouchinterest(game.Players.LocalPlayer.Character.HumanoidRootPart, part, 0) firetouchinterest(game.Players.LocalPlayer.Character.HumanoidRootPart, part, 1) end
+                end
+            end)
+        end
+    end)
+end
+
+function AutoStoreFunc()
+    spawn(function()
+        while getgenv().AutoStore do
+            task.wait(1)
+            pcall(function()
+                for _,tool in pairs(game.Players.LocalPlayer.Backpack:GetChildren()) do
+                    if tool.ToolTip=="Blox Fruit" then
+                        local fname=tool.Name:gsub(" Fruit","")
+                        local has=false
+                        local ok,fruits=pcall(function() return game.ReplicatedStorage.Remotes.CommF_:InvokeServer("GetFruits") end)
+                        if ok and fruits then for _,f in pairs(fruits) do if f.Name==fname then has=true break end end end
+                        if not has then game.ReplicatedStorage.Remotes.CommF_:InvokeServer("StoreFruit",fname,tool) end
+                    end
+                end
+            end)
+        end
+    end)
+end
+
+function AutoFruitFunc()
+    spawn(function()
+        while getgenv().AutoFruit do
+            task.wait(0.5)
+            pcall(function()
+                for _,v in pairs(workspace:GetChildren()) do
+                    if v:IsA("Tool") and v.ToolTip=="Blox Fruit" and v:FindFirstChild("Handle") then
+                        TweenReto(v.Handle.CFrame) wait(0.3)
+                        firetouchinterest(game.Players.LocalPlayer.Character.HumanoidRootPart, v.Handle, 0)
+                        firetouchinterest(game.Players.LocalPlayer.Character.HumanoidRootPart, v.Handle, 1)
+                    end
+                end
+            end)
+        end
+    end)
+end
+
+TabAura:CreateSlider({Name="Aura Distancia", Range={10,35}, Increment=1, CurrentValue=30, Callback=function(V) getgenv().AuraDist=V end})
+TabAura:CreateToggle({Name="Aura 30", CurrentValue=false, Callback=function(V) getgenv().Aura=V if V then AuraLoop() end end})
+TabFarm:CreateToggle({Name="Auto Farm 1-700", CurrentValue=false, Callback=function(V) getgenv().AutoFarm=V getgenv().NoClip=V getgenv().Aura=V if V then StartFarm() AuraLoop() else if CurrentTween then CurrentTween:Cancel() end getgenv().NoClip=false end end})
+TabSaber:CreateToggle({Name="Auto Saber [Botões + Tocha]", CurrentValue=false, Callback=function(V) getgenv().AutoSaber=V getgenv().NoClip=V if V then AutoSaberFix() else if CurrentTween then CurrentTween:Cancel() end getgenv().NoClip=false end end})
+TabChest:CreateToggle({Name="Auto Chest Anti-Kick", CurrentValue=false, Callback=function(V) getgenv().AutoChest=V getgenv().NoClip=V if V then AutoChestFunc() else if CurrentTween then CurrentTween:Cancel() end getgenv().NoClip=false end end})
+TabFruit:CreateToggle({Name="Auto Store [Só se não tem]", CurrentValue=false, Callback=function(V) getgenv().AutoStore=V if V then AutoStoreFunc() end end})
+TabFruit:CreateToggle({Name="Auto Fruit Chão", CurrentValue=false, Callback=function(V) getgenv().AutoFruit=V getgenv().NoClip=V if V then AutoFruitFunc() else if CurrentTween then CurrentTween:Cancel() end getgenv().NoClip=false end end})
+
+Rayfield:Notify({Title="Tech Hub",Content="UI Carregou!",Duration=5})
