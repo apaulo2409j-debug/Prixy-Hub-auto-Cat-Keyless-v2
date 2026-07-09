@@ -1,6 +1,22 @@
 repeat wait() until game:IsLoaded()
 local Rayfield = loadstring(game:HttpGet('https://raw.githubusercontent.com/shlexware/Rayfield/main/source'))()
-local Window = Rayfield:CreateWindow({Name="Tech Hub | 1 SEA FIX", ConfigurationSaving={Enabled=false}, KeySystem=false})
+
+local Window = Rayfield:CreateWindow({
+   Name = "Tech Hub | 1 SEA FIX",
+   LoadingTitle = "Tech Hub Key System",
+   LoadingSubtitle = "by Joao",
+   ConfigurationSaving = {Enabled = false},
+   KeySystem = true,
+   KeySettings = {
+      Title = "Tech Hub - Key",
+      Subtitle = "Link da Key no Discord",
+      Note = "Pega a key em https://ouo.io/PACOnGo",
+      FileName = "TechHubKey",
+      SaveKey = true,
+      GrabKeyFromSite = false,
+      Key = {"Key-039472joaokey193"}
+   }
+})
 
 getgenv().AutoFarm=false
 getgenv().Aura=false
@@ -10,7 +26,6 @@ getgenv().AutoSaber=false
 getgenv().AutoChest=false
 getgenv().AutoStore=false
 getgenv().AutoFruit=false
-getgenv().AutoRoll=false
 
 local TabFarm = Window:CreateTab("Auto Level", 4483362458)
 local TabAura = Window:CreateTab("Aura", 4483362490)
@@ -26,7 +41,6 @@ local Quests = {
 }
 
 local CurrentTween=nil
-
 game:GetService("RunService").Stepped:Connect(function()
     if getgenv().NoClip then
         for _,p in pairs(game.Players.LocalPlayer.Character:GetDescendants()) do
@@ -96,12 +110,8 @@ function StartFarm()
                 local Q=GetQuest()
                 local hrp=game.Players.LocalPlayer.Character.HumanoidRootPart
                 if not HasQuest(Q.N) then
-                    TweenReto(Q.PQ)
-                    if not getgenv().AutoFarm then return end
-                    wait(0.5)
-                    game.ReplicatedStorage.Remotes.CommF_:InvokeServer("StartQuest",Q.Q,Q.QN)
-                    wait(1)
-                    return
+                    TweenReto(Q.PQ) wait(0.5)
+                    game.ReplicatedStorage.Remotes.CommF_:InvokeServer("StartQuest",Q.Q,Q.QN) wait(1) return
                 end
                 local Mob=nil
                 for _,v in pairs(workspace.Enemies:GetChildren()) do if v.Name==Q.N and v.Humanoid.Health>0 then Mob=v break end end
@@ -124,8 +134,7 @@ function StartFarm()
                         hrp.Velocity=Vector3.new(0,0,0)
                     until not getgenv().AutoFarm or not Mob.Parent or Mob.Humanoid.Health<=0 or not HasQuest(Q.N)
                 else
-                    TweenReto(Q.PM*CFrame.new(math.random(-25,25),0,math.random(-25,25))*CFrame.new(0,15,0))
-                    wait(0.5)
+                    TweenReto(Q.PM*CFrame.new(math.random(-25,25),0,math.random(-25,25))*CFrame.new(0,15,0)) wait(0.5)
                 end
             end)
         end
@@ -226,4 +235,4 @@ TabChest:CreateToggle({Name="Auto Chest Anti-Kick", CurrentValue=false, Callback
 TabFruit:CreateToggle({Name="Auto Store [Só se não tem]", CurrentValue=false, Callback=function(V) getgenv().AutoStore=V if V then AutoStoreFunc() end end})
 TabFruit:CreateToggle({Name="Auto Fruit Chão", CurrentValue=false, Callback=function(V) getgenv().AutoFruit=V getgenv().NoClip=V if V then AutoFruitFunc() else if CurrentTween then CurrentTween:Cancel() end getgenv().NoClip=false end end})
 
-Rayfield:Notify({Title="Tech Hub",Content="UI Carregou!",Duration=5})
+Rayfield:Notify({Title="Tech Hub",Content="Key correta! UI Carregou!",Duration=5})
