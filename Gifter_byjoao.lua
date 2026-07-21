@@ -1,27 +1,18 @@
--- Script para Delta - Fake Gift com Interceptação do Botão REAL "Comprar"
+-- Script para Delta - Fake Gift com Detecção Automática e Imagem
 local player = game.Players.LocalPlayer
-local guiService = game:GetService("GuiService")
-local runService = game:GetService("RunService")
-local userInput = game:GetService("UserInputService")
-
--- ========== VARIAVEIS GLOBAIS ==========
-local fruitName = "Dragao"
-local priceValue = "4000"
-local balanceValue = "493180"
-local isHooking = false
-local hookConnection = nil
-local realButton = nil
-
--- ========== CRIAR UI DE CONFIGURAÇÃO (FLUTUANTE) ==========
 local screenGui = Instance.new("ScreenGui")
 screenGui.Parent = player.PlayerGui
 screenGui.ResetOnSpawn = false
 screenGui.ZIndexBehavior = Enum.ZIndexBehavior.Global
 
+local isHooking = false
+local hookConnection = nil
+
+-- ========== UI DE CONFIGURAÇÃO ==========
 local configFrame = Instance.new("Frame")
 configFrame.Parent = screenGui
-configFrame.Size = UDim2.new(0, 280, 0, 240)
-configFrame.Position = UDim2.new(0.5, -140, 0.5, -120)
+configFrame.Size = UDim2.new(0, 280, 0, 150)
+configFrame.Position = UDim2.new(0.5, -140, 0.5, -75)
 configFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 40)
 configFrame.BorderSizePixel = 0
 configFrame.Active = true
@@ -29,52 +20,26 @@ configFrame.Draggable = true
 local corner1 = Instance.new("UICorner", configFrame)
 corner1.CornerRadius = UDim.new(0, 10)
 
--- Título
 local title = Instance.new("TextLabel", configFrame)
 title.Size = UDim2.new(1, 0, 0, 35)
 title.BackgroundTransparency = 1
-title.Text = "⚙️ Configurar Fake Gift"
+title.Text = "⚙️ Fake Gift - Auto Detect"
 title.TextColor3 = Color3.fromRGB(255,255,255)
 title.TextScaled = true
 title.Font = Enum.Font.GothamBold
 
--- Input Nome
-local fruitBox = Instance.new("TextBox", configFrame)
-fruitBox.Size = UDim2.new(0.9, 0, 0, 30)
-fruitBox.Position = UDim2.new(0.05, 0, 0.2, 0)
-fruitBox.BackgroundColor3 = Color3.fromRGB(50,50,55)
-fruitBox.TextColor3 = Color3.fromRGB(255,255,255)
-fruitBox.PlaceholderText = "Nome (ex: Kitsune)"
-fruitBox.Text = "Dragao"
-fruitBox.Font = Enum.Font.GothamMedium
-local c2 = Instance.new("UICorner", fruitBox); c2.CornerRadius = UDim.new(0,4)
+local statusLabel = Instance.new("TextLabel", configFrame)
+statusLabel.Size = UDim2.new(1, 0, 0, 30)
+statusLabel.Position = UDim2.new(0, 0, 0.3, 0)
+statusLabel.BackgroundTransparency = 1
+statusLabel.Text = "❌ Aguardando ativação..."
+statusLabel.TextColor3 = Color3.fromRGB(200,200,200)
+statusLabel.TextScaled = true
+statusLabel.Font = Enum.Font.GothamMedium
 
--- Input Preço
-local priceBox = Instance.new("TextBox", configFrame)
-priceBox.Size = UDim2.new(0.4, 0, 0, 30)
-priceBox.Position = UDim2.new(0.05, 0, 0.45, 0)
-priceBox.BackgroundColor3 = Color3.fromRGB(50,50,55)
-priceBox.TextColor3 = Color3.fromRGB(255,255,255)
-priceBox.PlaceholderText = "Preço"
-priceBox.Text = "4000"
-priceBox.Font = Enum.Font.GothamMedium
-local c3 = Instance.new("UICorner", priceBox); c3.CornerRadius = UDim.new(0,4)
-
--- Input Saldo
-local balanceBox = Instance.new("TextBox", configFrame)
-balanceBox.Size = UDim2.new(0.4, 0, 0, 30)
-balanceBox.Position = UDim2.new(0.55, 0, 0.45, 0)
-balanceBox.BackgroundColor3 = Color3.fromRGB(50,50,55)
-balanceBox.TextColor3 = Color3.fromRGB(255,255,255)
-balanceBox.PlaceholderText = "Saldo"
-balanceBox.Text = "493180"
-balanceBox.Font = Enum.Font.GothamMedium
-local c4 = Instance.new("UICorner", balanceBox); c4.CornerRadius = UDim.new(0,4)
-
--- Botão Ativar/Desativar Interceptação
 local toggleBtn = Instance.new("TextButton", configFrame)
 toggleBtn.Size = UDim2.new(0.8, 0, 0, 40)
-toggleBtn.Position = UDim2.new(0.1, 0, 0.7, 0)
+toggleBtn.Position = UDim2.new(0.1, 0, 0.6, 0)
 toggleBtn.BackgroundColor3 = Color3.fromRGB(0, 170, 255)
 toggleBtn.Text = "🔵 Ativar Captura"
 toggleBtn.TextColor3 = Color3.fromRGB(255,255,255)
@@ -82,24 +47,34 @@ toggleBtn.TextScaled = true
 toggleBtn.Font = Enum.Font.GothamBold
 local c5 = Instance.new("UICorner", toggleBtn); c5.CornerRadius = UDim.new(0,6)
 
--- Status
-local statusLabel = Instance.new("TextLabel", configFrame)
-statusLabel.Size = UDim2.new(1, 0, 0, 25)
-statusLabel.Position = UDim2.new(0, 0, 0.9, 0)
-statusLabel.BackgroundTransparency = 1
-statusLabel.Text = "❌ Aguardando..."
-statusLabel.TextColor3 = Color3.fromRGB(200,200,200)
-statusLabel.TextScaled = true
-statusLabel.Font = Enum.Font.GothamMedium
+-- ========== FUNÇÃO PARA DETECTAR A FRUTA ==========
+local function detectFruit()
+    -- Tenta encontrar o nome da fruta na tela de compra
+    local playerGui = player.PlayerGui
+    for _, gui in pairs(playerGui:GetChildren()) do
+        if gui:IsA("ScreenGui") then
+            for _, child in pairs(gui:GetDescendants()) do
+                if child:IsA("TextLabel") or child:IsA("TextButton") then
+                    local text = child.Text
+                    -- Lista de frutas conhecidas (adicione mais se necessário)
+                    local fruits = {"Kitsune", "Dragon", "Leopard", "Dough", "Venom", "Spirit", "Control", "Shadow", "Gravity", "Mammoth", "T-Rex", "Sound", "Pain", "Love", "Spider", "Rumble", "Magma", "Buddha", "Flame", "Ice", "Sand", "Dark", "Light", "Rubber", "Ghost", "Phoenix", "Blizzard", "Smoke", "Spring", "Chop", "Spin", "Falcon", "Diamond", "String", "Barrier", "Revive", "Door", "Paw", "Fruit"}
+                    for _, fruit in pairs(fruits) do
+                        if string.find(text, fruit) then
+                            return fruit
+                        end
+                    end
+                end
+            end
+        end
+    end
+    return nil
+end
 
--- Atualizar valores quando digitar
-fruitBox:GetPropertyChangedSignal("Text"):Connect(function() fruitName = fruitBox.Text end)
-priceBox:GetPropertyChangedSignal("Text"):Connect(function() priceValue = priceBox.Text end)
-balanceBox:GetPropertyChangedSignal("Text"):Connect(function() balanceValue = balanceBox.Text end)
-
--- ========== FUNÇÃO: CRIAR POPUP FALSA (ESTILO ROBLOX AZUL) ==========
-local function createFakePopup(fruit, price, balance)
-    -- Fecha se já existir uma
+-- ========== FUNÇÃO: CRIAR POPUP FALSA COM IMAGEM ==========
+local function createFakePopup(fruit)
+    if not fruit then fruit = "Fruta" end
+    
+    -- Fecha popup antiga se existir
     local old = screenGui:FindFirstChild("FakePopup")
     if old then old:Destroy() end
 
@@ -108,12 +83,11 @@ local function createFakePopup(fruit, price, balance)
     popup.Parent = screenGui
     popup.Size = UDim2.new(0, 380, 0, 500)
     popup.Position = UDim2.new(0.5, -190, 0.5, -250)
-    popup.BackgroundColor3 = Color3.fromRGB(22, 24, 35) -- Azul escuro Roblox
+    popup.BackgroundColor3 = Color3.fromRGB(22, 24, 35)
     popup.BorderSizePixel = 0
     popup.ClipsDescendants = true
     popup.ZIndex = 10
     
-    -- Sombra/brilho (gradiente azul)
     local gradient = Instance.new("UIGradient", popup)
     gradient.Color = ColorSequence.new({
         ColorSequenceKeypoint.new(0, Color3.fromRGB(45, 50, 75)),
@@ -123,11 +97,6 @@ local function createFakePopup(fruit, price, balance)
 
     local popupCorner = Instance.new("UICorner", popup)
     popupCorner.CornerRadius = UDim.new(0, 12)
-
-    -- Borda sutil
-    local border = Instance.new("UIStroke", popup)
-    border.Color = Color3.fromRGB(60, 70, 100)
-    border.Thickness = 1
 
     -- ===== TOPO =====
     local topBar = Instance.new("Frame", popup)
@@ -156,23 +125,36 @@ local function createFakePopup(fruit, price, balance)
         popup:Destroy()
     end)
 
-    -- ===== ÍCONE DA FRUTA (CÍRCULO) =====
+    -- ===== ÍCONE DA FRUTA (IMAGEM) =====
     local iconBg = Instance.new("Frame", popup)
     iconBg.Size = UDim2.new(0, 90, 0, 90)
     iconBg.Position = UDim2.new(0.5, -45, 0.18, 0)
-    iconBg.BackgroundColor3 = Color3.fromRGB(55, 50, 70) -- Fundo do ícone
+    iconBg.BackgroundColor3 = Color3.fromRGB(55, 50, 70)
     local iconCorner = Instance.new("UICorner", iconBg)
     iconCorner.CornerRadius = UDim.new(1, 0)
 
+    -- Tenta carregar a imagem da fruta (você pode substituir a URL)
+    local imageLabel = Instance.new("ImageLabel", iconBg)
+    imageLabel.Size = UDim2.new(0.8, 0, 0.8, 0)
+    imageLabel.Position = UDim2.new(0.1, 0, 0.1, 0)
+    imageLabel.BackgroundTransparency = 1
+    -- URL genérica para ícone de fruta (substitua por uma melhor se encontrar)
+    imageLabel.Image = "https://www.roblox.com/asset-thumbnail/image?assetId=123456789&width=90&height=90"
+    -- Caso a imagem não carregue, mostra as iniciais
     local iconText = Instance.new("TextLabel", iconBg)
     iconText.Size = UDim2.new(1, 0, 1, 0)
     iconText.BackgroundTransparency = 1
-    local initials = string.sub(fruit, 1, 2):upper()
-    if #fruit < 2 then initials = fruit:upper() .. "?" end
-    iconText.Text = initials
-    iconText.TextColor3 = Color3.fromRGB(255, 215, 0) -- Dourado
+    iconText.Text = string.sub(fruit, 1, 2):upper()
+    iconText.TextColor3 = Color3.fromRGB(255, 215, 0)
     iconText.TextScaled = true
     iconText.Font = Enum.Font.GothamBold
+    iconText.Visible = false -- Escondido por padrão, aparece se a imagem falhar
+
+    imageLabel:GetPropertyChangedSignal("Image"):Connect(function()
+        if imageLabel.Image == "" then
+            iconText.Visible = true
+        end
+    end)
 
     -- ===== NOME DA FRUTA =====
     local fruitNameLabel = Instance.new("TextLabel", popup)
@@ -184,22 +166,22 @@ local function createFakePopup(fruit, price, balance)
     fruitNameLabel.TextScaled = true
     fruitNameLabel.Font = Enum.Font.GothamBold
 
-    -- ===== PREÇO (DOURADO) =====
+    -- ===== PREÇO (fixo em 4000 para exemplo) =====
     local priceLabel = Instance.new("TextLabel", popup)
     priceLabel.Size = UDim2.new(1, 0, 0, 50)
     priceLabel.Position = UDim2.new(0, 0, 0.48, 0)
     priceLabel.BackgroundTransparency = 1
-    priceLabel.Text = price
+    priceLabel.Text = "4,000"
     priceLabel.TextColor3 = Color3.fromRGB(255, 215, 0)
     priceLabel.TextScaled = true
     priceLabel.Font = Enum.Font.GothamBold
 
-    -- ===== SALDO =====
+    -- ===== SALDO (fixo em 493180 para exemplo) =====
     local balanceLabel = Instance.new("TextLabel", popup)
     balanceLabel.Size = UDim2.new(1, 0, 0, 35)
     balanceLabel.Position = UDim2.new(0, 0, 0.60, 0)
     balanceLabel.BackgroundTransparency = 1
-    balanceLabel.Text = balance
+    balanceLabel.Text = "493,180"
     balanceLabel.TextColor3 = Color3.fromRGB(200, 210, 230)
     balanceLabel.TextScaled = true
     balanceLabel.Font = Enum.Font.GothamMedium
@@ -214,7 +196,6 @@ local function createFakePopup(fruit, price, balance)
     buyBtn.TextScaled = true
     buyBtn.Font = Enum.Font.GothamBold
     local buyCorner = Instance.new("UICorner", buyBtn); buyCorner.CornerRadius = UDim.new(0,8)
-    -- Efeito visual ao clicar
     buyBtn.MouseButton1Click:Connect(function()
         buyBtn.BackgroundColor3 = Color3.fromRGB(0, 150, 60)
         task.wait(0.15)
@@ -255,16 +236,6 @@ end
 local function findRealBuyButton()
     for _, gui in pairs(player.PlayerGui:GetChildren()) do
         if gui:IsA("ScreenGui") then
-            -- Procura recursivamente por TextButton com texto "Comprar" ou "Buy"
-            local button = gui:FindFirstChild("Comprar", true)
-            if button and button:IsA("TextButton") then
-                return button
-            end
-            local button2 = gui:FindFirstChild("Buy", true)
-            if button2 and button2:IsA("TextButton") then
-                return button2
-            end
-            -- Em alguns casos, o texto está dentro de um TextLabel filho
             for _, child in pairs(gui:GetDescendants()) do
                 if child:IsA("TextButton") and (child.Text == "Comprar" or child.Text == "Buy") then
                     return child
@@ -280,7 +251,7 @@ local function toggleHook(enable)
     if enable then
         if hookConnection then hookConnection:Disconnect() hookConnection = nil end
         
-        realButton = findRealBuyButton()
+        local realButton = findRealBuyButton()
         if not realButton then
             statusLabel.Text = "❌ Abra o menu de presente primeiro!"
             statusLabel.TextColor3 = Color3.fromRGB(255, 100, 100)
@@ -290,27 +261,21 @@ local function toggleHook(enable)
             return
         end
 
-        -- Intercepta o clique do botão real
         hookConnection = realButton.MouseButton1Click:Connect(function()
-            -- Atualiza os dados dos inputs
-            fruitName = fruitBox.Text
-            priceValue = priceBox.Text
-            balanceValue = balanceBox.Text
-            if fruitName == "" then fruitName = "Fruta" end
-            if priceValue == "" then priceValue = "0" end
-            if balanceValue == "" then balanceValue = "0" end
-            
-            -- Mostra a popup fake
-            createFakePopup(fruitName, priceValue, balanceValue)
-            
-            -- Opcional: dá um feedback visual no botão real
-            realButton.BackgroundColor3 = Color3.fromRGB(0, 150, 60)
-            task.wait(0.1)
-            realButton.BackgroundColor3 = Color3.fromRGB(0, 170, 255) -- ou a cor original
+            local fruit = detectFruit()
+            if fruit then
+                createFakePopup(fruit)
+            else
+                -- Se não detectar, mostra uma mensagem
+                statusLabel.Text = "⚠️ Fruta não detectada! Tente novamente."
+                statusLabel.TextColor3 = Color3.fromRGB(255, 200, 0)
+                -- Mostra popup genérica
+                createFakePopup("Fruta")
+            end
         end)
 
         isHooking = true
-        statusLabel.Text = "✅ CAPTURA ATIVA! Clique em 'Comprar' no jogo."
+        statusLabel.Text = "✅ CAPTURA ATIVA! Clique em 'Comprar'."
         statusLabel.TextColor3 = Color3.fromRGB(100, 255, 100)
         toggleBtn.BackgroundColor3 = Color3.fromRGB(255, 50, 50)
         toggleBtn.Text = "🔴 Desativar Captura"
@@ -328,7 +293,6 @@ local function toggleHook(enable)
     end
 end
 
--- ========== BOTÃO DE ATIVAÇÃO ==========
 toggleBtn.MouseButton1Click:Connect(function()
     if isHooking then
         toggleHook(false)
@@ -337,4 +301,4 @@ toggleBtn.MouseButton1Click:Connect(function()
     end
 end)
 
-print("✅ Script Fake Gift com Interceptação carregado! Ative a captura e clique em 'Comprar' no jogo.")
+print("✅ Script Fake Gift com Detecção Automática carregado!")
